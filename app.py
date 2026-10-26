@@ -40,11 +40,14 @@ def home():
 
     with sqlite3.connect(DATABASE) as connection:
         students = connection.execute(
-            "SELECT name FROM students ORDER BY id"
+            "SELECT id, name FROM students ORDER BY id"
         ).fetchall()
 
     student_list = "".join(
-        f"<li>{escape(student[0])}</li>" for student in students
+        f'<li>{escape(name)} '
+        f'<form method="post" action="/delete/{student_id}" style="display:inline;">'
+        f'<button type="submit">Delete</button></form></li>'
+        for student_id, name in students
     )
 
     return f"""
@@ -56,6 +59,17 @@ def home():
     <h2>Students</h2>
     <ul>{student_list}</ul>
     """
+
+
+@app.route("/delete/<int:student_id>", methods=["POST"])
+def delete_student(student_id):
+    with sqlite3.connect(DATABASE) as connection:
+        connection.execute(
+            "DELETE FROM students WHERE id = ?",
+            (student_id,)
+        )
+
+    return redirect(url_for("home"))
 
 
 initialize_database()
