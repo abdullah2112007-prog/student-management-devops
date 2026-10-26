@@ -1,16 +1,51 @@
-from flask import Flask, request
+import os
+import sqlite3
+from html import escape
+from flask import Flask, request, redirect, url_for
 
 app = Flask(__name__)
-students = []
+
+DATABASE = os.environ.get("DATABASE_PATH", "students.db")
+
+
+def initialize_database():
+    database_folder = os.path.dirname(DATABASE)
+    if database_folder:
+        os.makedirs(database_folder, exist_ok=True)
+
+    with sqlite3.connect(DATABASE) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS students (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL
+            )
+            """
+        )
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
-        if name:
-            students.append(name)
 
-    student_list = "".join(f"<li>{name}</li>" for name in students)
+        if name:
+            with sqlite3.connect(DATABASE) as connection:
+                connection.execute(
+                    "INSERT INTO students (name) VALUES (?)",
+                    (name,)
+                )
+
+        return redirect(url_for("home"))
+
+    with sqlite3.connect(DATABASE) as connection:
+        students = connection.execute(
+            "SELECT name FROM students ORDER BY id"
+        ).fetchall()
+
+    student_list = "".join(
+        f"<li>{escape(student[0])}</li>" for student in students
+    )
 
     return f"""
     <h1>Student Management</h1>
@@ -21,6 +56,10 @@ def home():
     <h2>Students</h2>
     <ul>{student_list}</ul>
     """
+
+
+initialize_database()
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
