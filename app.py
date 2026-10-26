@@ -4,12 +4,12 @@ from html import escape
 from flask import Flask, request, redirect, url_for
 
 app = Flask(__name__)
-
 DATABASE = os.environ.get("DATABASE_PATH", "students.db")
 
 
 def initialize_database():
     database_folder = os.path.dirname(DATABASE)
+
     if database_folder:
         os.makedirs(database_folder, exist_ok=True)
 
@@ -45,6 +45,7 @@ def home():
 
     student_list = "".join(
         f'<li>{escape(name)} '
+        f'<a href="/edit/{student_id}">Edit</a> '
         f'<form method="post" action="/delete/{student_id}" style="display:inline;">'
         f'<button type="submit">Delete</button></form></li>'
         for student_id, name in students
@@ -58,6 +59,40 @@ def home():
     </form>
     <h2>Students</h2>
     <ul>{student_list}</ul>
+    """
+
+
+@app.route("/edit/<int:student_id>", methods=["GET", "POST"])
+def edit_student(student_id):
+    with sqlite3.connect(DATABASE) as connection:
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+
+            if name:
+                connection.execute(
+                    "UPDATE students SET name = ? WHERE id = ?",
+                    (name, student_id)
+                )
+
+            return redirect(url_for("home"))
+
+        student = connection.execute(
+            "SELECT name FROM students WHERE id = ?",
+            (student_id,)
+        ).fetchone()
+
+    if student is None:
+        return redirect(url_for("home"))
+
+    safe_name = escape(student[0], quote=True)
+
+    return f"""
+    <h1>Edit Student</h1>
+    <form method="post">
+        <input name="name" value="{safe_name}" required>
+        <button type="submit">Save changes</button>
+    </form>
+    <a href="/">Back to student list</a>
     """
 
 
