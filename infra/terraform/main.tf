@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.4.0"
 }
 
 variable "app_name" {
@@ -9,6 +9,13 @@ variable "app_name" {
 
 locals {
   container_port = 5000
+}
+
+resource "terraform_data" "app_config" {
+  input = {
+    app_name      = var.app_name
+    container_port = local.container_port
+  }
 }
 
 output "app_name" {
